@@ -1,0 +1,42 @@
+.title {
+    font-size: 30px;
+    font-weight: bold;
+    text-decoration-line: underline;
+    text-decoration-style: dashed;
+}
+
+.detail-page a {
+    text-decoration: none;
+    border: 1px solid black;
+    border-radius: 10px;
+    padding: 5px;
+    background-color: dodgerblue;
+    color: black;
+}
+
+.detail-page .network-tab {
+    margin-left: 10px;
+} 
+
+table {
+    background-color: rgb(233, 232, 232);
+}
+
+table tbody {
+    border: 1px solid black;   
+}
+
+table th {
+    text-align: center;
+}
+
+table tr {
+    border-bottom: 1px dashed black;
+    text-align: center;
+}
+
+.tcp-conn-header, .udp-conn-header {
+    margin-left: auto; 
+    margin-right: 20px; 
+    border: 1px solid gray;
+}

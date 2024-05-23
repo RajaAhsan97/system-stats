@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="container">
+        <table style="border: 1px solid black;">
+            <thead>
+                <th class="col"> S.no </th>
+                <th class="col-2"> Name </th>
+                <th class="col"> PID </th>
+                <th class="col"> Status </th>
+                <th class="col-2"> Username </th>
+                <th class="col"> Threads </th>
+                <th class="col"> CPU </th>
+                <th class="col"> 
+                    Memory
+                 </th>
+            </thead>
+            <tbody>
+
+            </tbody>
+        </table>
+    </div>
+{% endblock %}
+
+{% block domready %}
+    function fetchPidData() {
+        console.log("Detail page");
+        fetch('{% url "pid" %}')
+        .then(response => {
+            return response.json()
+        })
+        .then(data => {
+            
+            $('table tbody tr').remove();
+            var pids = Object.keys(data);
+            var pidsLength = pids.length;
+            console.log(pidsLength);
+            for (var i=0; i<pidsLength; i++) {
+                var getPid = pids[i];
+                var rss = data[getPid].memory_info[0]/1024;
+                var vms = data[getPid].memory_info[1]/1024;
+                var memoryPer = data[getPid].memory_percent.toFixed(2);
+                var cpu_per;
+                if (data[getPid].cpu_percent > 0.0) {
+                    cpu_per = data[getPid].cpu_percent/4;
+                    console.log(cpu_per);
+                } else {
+                    cpu_per = data[getPid].cpu_percent;
+                }
+
+                if (data[getPid].status === "stopped"){
+                    $('table tbody').append('<tr style="color: blue;"> <td class="col">'+i+'</td> <td class="col-2">'+data[getPid].name+'</td> <td class="col">'+getPid+'</td> <td class="col">'+data[getPid].status+'</td> <td class="col-2">'+data[getPid].username+'</td> <td class="col">'+data[getPid].num_threads+'</td> <td class="col">'+cpu_per+"%"+'</td> <td class="col"> commit: '+vms+" KB"+'<br> Working Set: '+rss+" KB"+'</td> </tr>')
+                } else {
+                    $('table tbody').append('<tr> <td class="col">'+i+'</td> <td class="col-2">'+data[getPid].name+'</td> <td class="col">'+getPid+'</td> <td class="col">'+data[getPid].status+'</td> <td class="col-2">'+data[getPid].username+'</td> <td class="col">'+data[getPid].num_threads+'</td> <td class="col">'+cpu_per+"%"+'</td> <td class="col"> commit: '+vms+" KB"+'<br> Working Set: '+rss+" KB"+'</td> </tr>')
+                }
+            }
+        })
+        setTimeout(fetchPidData, 1000);
+    }
+
+    fetchPidData()
+{% endblock %}

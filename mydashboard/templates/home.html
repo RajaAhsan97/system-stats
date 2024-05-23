@@ -1,0 +1,249 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %} {% endblock %}
+
+{% block content %}
+    <div class="mt-3" style="display: flex;">
+        <div class="container-fluid mt-3" style="height: 100%; width: 10%;">
+            <div class="container-fluid" style="display: flex;">
+                <div class="battery text-center" style="width:100%; height: 20%; border: 1px solid black;"> 
+
+                </div>
+                <div class="battery-icons">
+
+                </div>
+            </div>
+        </div> 
+        <div class="container">
+            <div class="row">
+                <div class="col-6">
+                    <div class="container">
+                        <div style="display: flex;">
+                            <div>
+                                <div class="indication" style="height: 10px; width: 10px; border-radius: 5px; "> </div>
+                            </div>
+                            <div class="text-end" style="width:95%;">
+                                <div class="cpu-frequency"> </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="container">
+                        <div id="chart-container" style="width:500px; height: 300px;"> </div> 
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="container">
+                        <div style="display: flex;">
+                            <div>
+                                <div class="memory-indication" style="height: 10px; width: 10px; border-radius: 5px; "> </div>
+                            </div>
+                            <div style="width: 50%;">
+                                <div class="memory-percentage" style="padding-left: 5px;"> </div>
+                            </div>
+                            <div class="text-end" style="width: 50%;">
+                                <div class="memory-values"> </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="container">
+                        <div id="memory-chart-container" style="width=500px; height:300px; background-color: black;"> </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div style="display:flex;">
+                        <div class="disk-read" style="width: 50%;">
+                            <p> Read: <span> </span> </p>
+                        </div>
+                        <div class="disk-write" style="width: 50%;">
+                            <p> Write: <span> </span> </p>
+                        </div>
+                    </div>
+                    <div class="container">
+                        <div id="disk-chart-container" style="width=500px; height:300px; background-color: black;"> </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block domready %}
+    var count = 0;
+    var cpuUtilization = [];
+    var memoryAvailable = [];
+    var memoryUsed = [];
+    var diskStats = [];
+    var diskPercent = [];
+    var dataLength = 20;
+
+    function fetchData(){
+        console.log("home page triggered");
+
+        $('.indication').css("background-color", "white");
+        $('.memory-indication').css("background-color", "green");
+        count = count + 1;
+        fetch('{% url "cpu-percent" %}')
+        .then(response => {
+            return response.json()
+        })
+        .then(data => {
+            $('.indication').css("background-color", "green");
+            $('.cpu-frequency').html(data['cpu_current_freq'] + '/' + data['cpu_base_freq'] + 'GHz');
+            cpuPercentData = {'label': data['label'], 'y': data['cpu_percent'], 'x': count};
+            //data['x'] = count;
+            cpuUtilization.push(cpuPercentData);
+
+            if (cpuUtilization.length > dataLength) {
+                cpuUtilization.shift();
+            }
+
+            var cpuChart = {
+                //animationEnabled: true,
+                theme: "dark2",
+                title:{
+                text: "CPU Utilization"
+                },
+                axisX: {
+                    title: "time",
+                },
+                axisY: {
+                    title: "CPU utilization percentage (%)",
+                    suffix: " %",
+                    maximum: 100,
+                    minimum: 0,
+                },
+                data: [{
+                    type: "area",
+                    markerType: "None",
+                    yValueFormatString: "### %",
+                    dataPoints: cpuUtilization
+                }]
+            }
+
+            var chart = new CanvasJS.Chart("chart-container", cpuChart);
+            chart.render();
+        })
+
+        fetch('{% url "memory-stats" %}')
+        .then(response => {
+            return response.json()
+        })
+        .then(data => {
+            $('.memory-indication').css("background-color", "white");
+            $('.memory-percentage').html(data['y3']+'%');
+            $('.memory-values').html(data['y2']+"/"+data['y1']+" GB");
+            //console.log(data);
+            
+            memoryUse = {'label': data['label'], 'y': data['y2']};
+            memoryAvai = {'label': data['label'], 'y': data['y']};
+            
+            memoryUse['x'] = count; 
+            memoryAvai['x'] = count;
+
+
+            memoryUsed.push(memoryUse);
+            memoryAvailable.push(memoryAvai);
+
+            if (memoryAvailable.length > dataLength) {
+                memoryAvailable.shift();
+                memoryUsed.shift();
+            }
+
+            var memoryChart = {
+                //animationEnabled: true,
+                theme: "dark2",
+                toolTip: {
+                    shared: true
+                },
+                title:{
+                    text: "Memory Statistics"
+                },
+                axisX: {
+                    title: "time",
+                },
+                axisY: {
+                    title: "Memory",
+                    suffix: " GB",
+                    maximum: data['y1'],
+                    minimum: 0,
+                },
+                data: [{
+                        type: "area",
+                        color: "blue",
+                        name: "Available",
+                        showInLegend: true,
+                        markerType: "None",
+                        yValueFormatString: "#.## GB",
+                        dataPoints: memoryAvailable,
+                    },{
+                        type: "line",
+                        color: "green",
+                        name: "Used",
+                        showInLegend: true,
+                        markerType: "None",
+                        yValueFormatString: "#.## GB",
+                        dataPoints: memoryUsed,
+                    }
+                ]
+            }
+
+            var memorychart = new CanvasJS.Chart("memory-chart-container", memoryChart);
+            memorychart.render();
+
+        })
+
+        fetch('{% url "disk-storage" %}')
+        .then(response => {
+            return response.json()
+        })
+        .then(data => {
+            $('.disk-read span').html(data['readSpeed'] + "  MB/s");
+            $('.disk-write span').html(data['writeSpeed'] + "  MB/s");
+
+            diskStats = [];
+            var diskUsed = {'y': data['usedDisk'], 'indexLabel': "Used"};
+            var diskFree = {'y': data['freeDisk'], 'indexLabel': "Free"};
+
+            diskStats.push(diskUsed);
+            diskStats.push(diskFree);
+
+            var diskChart = {
+                //animationEnabled: true,
+                theme: "dark2",
+                title:{
+                    text: "Disk Storage"
+                },
+                data: [{
+                        type: "doughnut",
+                        dataPoints: diskStats,
+                }]
+            }
+            var diskchart = new CanvasJS.Chart("disk-chart-container", diskChart);
+            diskchart.render();
+        })
+
+
+        fetch('{% url "battery-status" %}')
+        .then(response => {
+            return response.json()
+        })
+        .then(data => {
+            $('.battery').html('<div class="battery-stat">'+ data['percent'] +'</div>');
+            var wid = data['percent'].toString() + '%';
+            console.log(wid);
+            $('.battery-stat').css({"background-color": "gray", "color": "white", "width": wid});
+
+            if (data['charge_status'] === "charging") {
+                $('.battery-icons').html('<div> <img src="{% static 'icons/connected-plug-icon.svg' %}"> </div>')
+            } else if (data['charge_status'] === "discharging") {
+                $('.battery-icons').html('<div> <img src="{% static 'icons/disconnect-plug-icon.svg' %}"> </div>')
+            }
+        })
+
+
+        setTimeout(fetchData, 1000);
+    }
+    fetchData();
+{% endblock %}

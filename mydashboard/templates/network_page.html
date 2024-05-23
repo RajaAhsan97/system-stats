@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="container">
+        <div style="display: flex;">
+            <div class="total-bytes" style="width: 20%; height: 5%;"> </div>
+            <div class="sent-bytes" style="width: 20%; height: 5%;"> </div>
+            <div class="recv-bytes" style="width: 20%; height: 5%;"> </div>
+        </div>
+        <div class="row mt-3" style="height:60%;">
+            <div class="tcp-connections col-6" style="height: 100%;">
+                <div class="text-center"> TCP </div>
+                <div class="row text-center tcp-conn-header">
+                    <div style="width: 7%;"> # </div>
+                    <div style="width: 23%;"> Process </div>
+                    <div style="width: 10%;"> PID </div>
+                    <div style="width: 25%;"> Address </div>
+                    <div style="width: 20%;"> Local Port </div>
+                    <div style="width: 15%;"> Status </div>
+                </div> 
+                <div style="overflow: scroll; height: 90%;">
+                <table>
+                    <tbody>
+
+                    </tbody>
+                </table>
+            </div>
+            </div>
+            <div class="udp-connections col-6" style="height:100%;">
+                <div class="text-center"> UDP </div>
+                <div class="row text-center udp-conn-header">
+                    <div style="width: 7%;"> # </div>
+                    <div style="width: 23%;"> Process </div>
+                    <div style="width: 10%;"> PID </div>
+                    <div style="width: 25%;"> Address </div>
+                    <div style="width: 20%;"> Local Port </div>
+                    <div style="width: 15%;"> Status </div>
+                </div> 
+                <div style="overflow: scroll; height: 90%;">
+                    <table>
+                        <tbody>
+
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="NICs mt-5">
+            <div class="text-center"> Network Interface Card </div> 
+            <table>
+                <thead>
+                    <th class="col"> # </th>
+                    <th class="col"> NIC </th>
+                    <th class="col"> MAC </th>
+                    <th class="col"> IPv4 Address</th>
+                    <th class="col"> IPv4 Subnetmask</th>
+                    <th class="col"> IPv6 Address</th>
+                    <th style="width: 10px;"> </th>
+                    <th class="col" style="border-left: 1px solid black; width:5%;"> isup </th>
+                    <th class="col" style="width: 5%;"> duplex </th>
+                    <th class="col" style="width: 5%;"> speed </th>
+                    <th class="col" style="width: 5%;"> mtu </th>
+                </thead>
+                <tbody>
+
+                </tbody>
+            </table>
+
+            <div class="bytes-sent-recv" style="display: None;">
+
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block domready %}
+    var count=0;
+
+    async function fet() {
+        let delay = new Promise(function() {
+            setTimeout(fet, 1000);
+        })
+
+        fetch('{% url "network-stats" %}')
+        .then(response => {
+            return response.json();
+        })
+        .then(data => {
+            $('.tcp-connections table tbody tr').remove();
+            $('.udp-connections table tbody tr').remove();
+            count = count + 1;
+            {% comment %} console.log(data); {% endcomment %}
+            $('.total-bytes').html("Total: "+data['total_bytes']);
+            $('.sent-bytes').html("Sent: "+data['bytes_sent']+" kbps");
+            $('.recv-bytes').html("Receive: "+data['bytes_recv']+" kbps");
+
+            {% comment %} TCP conn {% endcomment %}
+            var tcpConnLen = data['tcp'].length
+            var sNo = 0;
+
+            for (var i=0; i<tcpConnLen; i++) {
+                if (data['tcp'][i][5] === 'LISTEN') {
+                    sNo = sNo + 1;
+                    var pid = data['tcp'][i][6];
+                    var status = data['tcp'][i][5];
+                    var localPort = data['tcp'][i][3][1];
+                    var localPortAddr = data['tcp'][i][3][0];
+                    var remotePort = data['tcp'][i][4][1];
+                    var remotePortAddr = data['tcp'][i][4][0];
+                    var process = data['tcp_process_nm'][i];
+                    $('.tcp-connections table tbody').append('<tr> <td class="col">'+sNo+'</td> <td class="col-2">'+process+'</td> <td class="col">'+pid+'</td> <td class="col-2">'+localPortAddr+'</td> <td class="col">'+localPort+'</td> <td class="col">'+status+'</td> <tr>');
+                }
+            }
+
+            
+            var udpConnLen = data['udp'].length
+            var sNo = 0;
+
+            for (var i=0; i<udpConnLen; i++) {
+                    sNo = sNo + 1;
+                    var pid = data['udp'][i][6];
+                    var status = data['udp'][i][5];
+                    var localPort = data['udp'][i][3][1];
+                    var localPortAddr = data['udp'][i][3][0];
+                    var remotePort = data['udp'][i][4][1];
+                    var remotePortAddr = data['udp'][i][4][0];
+                    var process = data['udp_process_nm'][i];
+                    $('.udp-connections table tbody').append('<tr> <td class="col">'+sNo+'</td> <td class="col-2">'+process+'</td> <td class="col">'+pid+'</td> <td class="col-2">'+localPortAddr+'</td> <td class="col">'+localPort+'</td> <td class="col">'+status+'</td> <tr>');
+                
+            }
+        })
+
+        fetch('{% url "network-interface" %}')
+        .then(response => {
+            return response.json();
+        })
+        .then(data => {
+            $('.NICs table tbody tr').remove();
+            nicName = Object.keys(data);
+            
+
+            for (var i=0; i<nicName.length; i++) {
+                var sNo = i+1;
+                var isUp = data[nicName[i]]['stats'][0];
+                var duplex = data[nicName[i]]['duplex'];
+                var speed = data[nicName[i]]['stats'][2];
+                var mtu = data[nicName[i]]['stats'][3];
+                var flag = data[nicName[i]]['stats'][4];
+                var MAC = data[nicName[i]]['MAC_address'];
+                var IPv4_addr = data[nicName[i]]['IPv4_address'];
+                var IPv4_subnet = data[nicName[i]]['IPv4_subnet'];
+                var IPv6_addr = data[nicName[i]]['IPv6_address'];
+                var bytesSent = data[nicName[i]]['bytes_sent']
+                var bytesRecv = data[nicName[i]]['bytes_recv']
+
+                if (bytesSent && bytesRecv) {
+                    $('.bytes-sent-recv').html('Sent: '+bytesSent+'  |  '+'Receive: '+bytesRecv);
+                    $('.NICs table tbody').append('<tr class="active" style="color: blue;"> <td class="col">'+sNo+'</td> <td class="col">'+nicName[i]+'</td> <td class="col">'+MAC+'</td> <td class="col">'+IPv4_addr+'</td> <td class="col">'+IPv4_subnet+'</td> <td class="col">'+IPv6_addr+'</td> <td style="width: 10px;"></td> <td class="col" style="border-left: 1px solid black;">'+isUp+'</td> <td class="col">'+duplex+'</td> <td class="col">'+speed+'</td> <td class="col">'+mtu+'</td> </tr>');
+                   
+                }
+                else{
+                    $('.NICs table tbody').append('<tr> <td class="col">'+sNo+'</td> <td class="col">'+nicName[i]+'</td> <td class="col">'+MAC+'</td> <td class="col">'+IPv4_addr+'</td> <td class="col">'+IPv4_subnet+'</td> <td class="col">'+IPv6_addr+'</td> <td style="width: 10px;"></td> <td class="col" style="border-left: 1px solid black;">'+isUp+'</td> <td class="col">'+duplex+'</td> <td class="col">'+speed+'</td> <td class="col">'+mtu+'</td> </tr>');                    
+                }
+
+            } 
+            $('.active').hover(function(){
+                $('.bytes-sent-recv').css("display", "block")
+                }, function() {
+                    $('.bytes-sent-recv').css("display", "None")
+                }
+            );
+        })
+        await delay;
+    }
+    fet();
+{% endblock %}
